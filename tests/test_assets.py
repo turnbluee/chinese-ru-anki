@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from build_assets import ROOT, build_assets, is_cjk
@@ -13,10 +14,10 @@ def test_real_assets_are_offline_minimal_and_anki_safe(tmp_path: Path):
         card_script=ROOT / "web" / "card.js",
     )
     names = {path.name for path in outputs}
-    assert names == {"_hanzi-data.js", "_hanzi-writer.min.js", "_card.js"}
-    assert all(name.startswith("_") for name in names)
+    assert len(names) == 3
+    assert all(re.fullmatch(r"_(hanzi-data|hanzi-writer|card)-[0-9a-f]{10}(\.min)?\.js", name) for name in names)
 
-    generated = (tmp_path / "_hanzi-data.js").read_text(encoding="utf-8")
+    generated = next(tmp_path.glob("_hanzi-data-*.js")).read_text(encoding="utf-8")
     used = {char for record in records for char in record.hanzi if is_cjk(char)}
     data = json.loads(generated.removeprefix("window.HANZI_DATA=").removesuffix(";\n"))
     assert set(data) == used

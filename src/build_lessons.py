@@ -51,17 +51,20 @@ def build_lesson_packages(
     radicals_path: Path,
     output_dir: Path,
 ) -> list[Path]:
-    lessons = split_by_lesson(read_cards(input_path))
-    radicals = split_by_lesson(read_cards(radicals_path), RADICAL_LESSONS)
+    words = read_cards(input_path)
+    radical_records = read_cards(radicals_path)
+    lessons = split_by_lesson(words)
+    radicals = split_by_lesson(radical_records, RADICAL_LESSONS)
+    all_records = words + radical_records
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs: list[Path] = []
     for number, (deck_id, deck_name) in LESSONS.items():
         output = output_dir / f"chinese-ru-lesson-{number:02d}.apkg"
-        outputs.append(build_package([(lessons[number], deck_id, deck_name)], output))
+        outputs.append(build_package([(lessons[number], deck_id, deck_name)], output, all_records))
 
     for number, (deck_id, deck_name) in RADICAL_LESSONS.items():
         output = output_dir / f"chinese-ru-radicals-lesson-{number:02d}.apkg"
-        outputs.append(build_package([(radicals[number], deck_id, deck_name)], output))
+        outputs.append(build_package([(radicals[number], deck_id, deck_name)], output, all_records))
 
     combined_specs = [
         (lessons[number], deck_id, deck_name)
@@ -70,7 +73,7 @@ def build_lesson_packages(
         (radicals[number], deck_id, deck_name)
         for number, (deck_id, deck_name) in RADICAL_LESSONS.items()
     ]
-    outputs.append(build_package(combined_specs, output_dir / "chinese-ru.apkg"))
+    outputs.append(build_package(combined_specs, output_dir / "chinese-ru.apkg", all_records))
     return outputs
 
 

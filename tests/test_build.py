@@ -1,4 +1,5 @@
 import json
+import re
 import sqlite3
 import zipfile
 from pathlib import Path
@@ -86,7 +87,7 @@ def test_asset_generation_contains_only_requested_hanzi(tmp_path: Path):
     card.write_text("window.ChineseCards = {};", encoding="utf-8")
 
     outputs = build_assets([fake_record("你 A好!")], output, data_package, writer, card)
-    generated = (output / "_hanzi-data.js").read_text(encoding="utf-8")
+    generated = next(output.glob("_hanzi-data-*.js")).read_text(encoding="utf-8")
     assert '"你"' in generated and '"好"' in generated
     assert '"没"' not in generated
     assert all(path.name.startswith("_") for path in outputs)
@@ -141,3 +142,27 @@ def test_all_lesson_and_radical_packages_are_built(tmp_path: Path):
 
     expected = {deck_id: name for deck_id, name in [*LESSONS.values(), *RADICAL_LESSONS.values()]}
     assert {did: decks[str(did)]["name"] for did in used} == expected
+
+
+def test_every_package_references_its_media_and_shares_hanzi_data(tmp_path: Path):
+    from build_deck import ROOT
+
+    outputs = build_lesson_packages(
+        ROOT / "data" / "cards.tsv",
+        ROOT / "data" / "radicals.tsv",
+        tmp_path,
+    )
+    data_names = set()
+    for output in outputs:
+        with zipfile.ZipFile(output) as package:
+            media = set(json.loads(package.read("media")).values())
+            collection = tmp_path / "collection.anki2"
+            collection.write_bytes(package.read("collection.anki2"))
+        with sqlite3.connect(collection) as db:
+            models = json.loads(db.execute("select models from col").fetchone()[0])
+        templates = "".join(t["qfmt"] + t["afmt"] for m in models.values() for t in m["tmpls"])
+        referenced = set(re.findall(r'src="([^"]+)"', templates))
+        assert referenced == media, output.name
+        data_names |= {name for name in media if name.startswith("_hanzi-data-")}
+    # One note type is shared by all packages, so they must embed identical data.
+    assert len(data_names) == 1

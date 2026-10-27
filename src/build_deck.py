@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -20,7 +21,20 @@ def read_template(name: str) -> str:
     return (ROOT / "templates" / name).read_text(encoding="utf-8")
 
 
-def create_model() -> genanki.Model:
+def media_names(media: list[Path]) -> dict[str, str]:
+    """Map template media names like _card.js to their hashed build names."""
+    return {re.sub(r"-[0-9a-f]{10}(?=\.)", "", path.name, count=1): path.name for path in media}
+
+
+def create_model(media: list[Path] | None = None) -> genanki.Model:
+    names = media_names(media or [])
+
+    def template(name: str) -> str:
+        text = read_template(name)
+        for plain, hashed in names.items():
+            text = text.replace(f'src="{plain}"', f'src="{hashed}"')
+        return text
+
     return genanki.Model(
         MODEL_ID,
         "Chinese RU Handwriting",
@@ -28,13 +42,13 @@ def create_model() -> genanki.Model:
         templates=[
             {
                 "name": "Russian → Chinese",
-                "qfmt": read_template("ru_to_zh_front.html"),
-                "afmt": read_template("ru_to_zh_back.html"),
+                "qfmt": template("ru_to_zh_front.html"),
+                "afmt": template("ru_to_zh_back.html"),
             },
             {
                 "name": "Chinese → Russian",
-                "qfmt": read_template("zh_to_ru_front.html"),
-                "afmt": read_template("zh_to_ru_back.html"),
+                "qfmt": template("zh_to_ru_front.html"),
+                "afmt": template("zh_to_ru_back.html"),
             },
         ],
         css=read_template("style.css"),
@@ -61,15 +75,21 @@ def create_deck(records: list[CardRecord], deck_id: int, deck_name: str, model: 
 def build_package(
     deck_specs: list[tuple[list[CardRecord], int, str]],
     output_path: Path,
+    asset_records: list[CardRecord] | None = None,
 ) -> Path:
+    """Build a package; asset_records defaults to the package's own records.
+
+    All packages share one note type, so packages that may be imported into the
+    same collection must embed handwriting data for every character they share.
+    """
     records = [record for deck_records, _, _ in deck_specs for record in deck_records]
     if not records:
         raise ValidationError("Нельзя собрать пакет без записей")
     uids = [record.uid for record in records]
     if len(uids) != len(set(uids)):
         raise ValidationError("Одна запись попала в несколько наборов одного пакета")
-    media = build_assets(records, card_script=ROOT / "web" / "card.js")
-    model = create_model()
+    media = build_assets(asset_records or records, card_script=ROOT / "web" / "card.js")
+    model = create_model(media)
     decks = [create_deck(deck_records, deck_id, deck_name, model) for deck_records, deck_id, deck_name in deck_specs]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     genanki.Package(decks, media_files=[str(path) for path in media]).write_to_file(str(output_path))

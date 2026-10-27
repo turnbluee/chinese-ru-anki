@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -35,6 +36,20 @@ def used_hanzi(records: list[CardRecord]) -> list[tuple[str, int]]:
     return sorted(first_lines.items(), key=lambda item: ord(item[0]))
 
 
+def write_media(output_dir: Path, stem: str, suffix: str, content: str) -> Path:
+    """Write content under a hashed name so Anki never keeps a stale copy.
+
+    Anki skips imported media whose name already exists in the collection, so
+    every content change must produce a new file name.
+    """
+    for stale in output_dir.glob(f"{stem}-*{suffix}"):
+        stale.unlink()
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:10]
+    target = output_dir / f"{stem}-{digest}{suffix}"
+    target.write_text(content, encoding="utf-8")
+    return target
+
+
 def _data_file(char: str, data_package: Path) -> Path:
     direct = data_package / f"{char}.json"
     if direct.is_file():
@@ -50,9 +65,7 @@ def build_card_asset(
     if not card_script.is_file():
         raise ValidationError(f"Не найден общий скрипт карточек: {card_script}")
     output_dir.mkdir(parents=True, exist_ok=True)
-    card_target = output_dir / "_card.js"
-    card_target.write_text(card_script.read_text(encoding="utf-8"), encoding="utf-8")
-    return card_target
+    return write_media(output_dir, "_card", ".js", card_script.read_text(encoding="utf-8"))
 
 
 def build_assets(
@@ -80,12 +93,12 @@ def build_assets(
         except (OSError, json.JSONDecodeError) as exc:
             raise ValidationError(f"Строка {line}: не удалось прочитать data для {char!r}: {exc}") from exc
 
-    data_target = output_dir / "_hanzi-data.js"
-    data_target.write_text(
+    data_target = write_media(
+        output_dir,
+        "_hanzi-data",
+        ".js",
         "window.HANZI_DATA=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n",
-        encoding="utf-8",
     )
-    writer_target = output_dir / "_hanzi-writer.min.js"
     writer_code = writer_source.read_text(encoding="utf-8")
     # The deck always supplies charDataLoader. Remove the upstream network fallback
     # entirely, and split the SVG namespace literal so the offline audit contains
@@ -104,7 +117,7 @@ def build_assets(
     )
     if "http://" in writer_code or "https://" in writer_code:
         raise ValidationError("Hanzi Writer bundle содержит внешний URL")
-    writer_target.write_text(writer_code, encoding="utf-8")
+    writer_target = write_media(output_dir, "_hanzi-writer", ".min.js", writer_code)
     outputs = [data_target, writer_target]
     if card_script is not None:
         outputs.append(build_card_asset(output_dir, card_script))
