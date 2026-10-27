@@ -40,9 +40,9 @@ def test_lesson_and_radical_deck_ids_are_stable_and_unique():
 
     ids = [deck_id for deck_id, _ in LESSONS.values()]
     radical_ids = [deck_id for deck_id, _ in RADICAL_LESSONS.values()]
-    assert ids == [1729041803, 1729041804, 1729041805, 1729041806]
-    assert radical_ids == [1729041811, 1729041812, 1729041813, 1729041814]
-    assert len(set(ids + radical_ids)) == 8
+    assert ids == [1729041803, 1729041804, 1729041805, 1729041806, 1729041807, 1729041808]
+    assert radical_ids == [1729041811, 1729041812, 1729041813, 1729041814, 1729041815, 1729041816]
+    assert len(set(ids + radical_ids)) == 12
 
 
 def test_records_are_split_between_lessons():
@@ -55,11 +55,13 @@ def test_records_are_split_between_lessons():
         2: 43,
         3: 51,
         4: 72,
+        5: 68,
+        6: 57,
     }
     assert not ({record.uid for record in lessons[1]} & {record.uid for record in lessons[2]})
 
 
-def test_radicals_match_the_four_textbook_exercises():
+def test_radicals_match_the_textbook_exercises():
     from build_deck import ROOT
     from validators import read_cards
 
@@ -71,8 +73,10 @@ def test_radicals_match_the_four_textbook_exercises():
         2: 28,
         3: 22,
         4: 35,
+        5: 28,
+        6: 13,
     }
-    assert sum(len(records) for records in lessons.values()) == 94
+    assert sum(len(records) for records in lessons.values()) == 135
 
 
 def test_asset_generation_contains_only_requested_hanzi(tmp_path: Path):
@@ -124,11 +128,15 @@ def test_all_lesson_and_radical_packages_are_built(tmp_path: Path):
         "chinese-ru-lesson-02.apkg",
         "chinese-ru-lesson-03.apkg",
         "chinese-ru-lesson-04.apkg",
+        "chinese-ru-lesson-05.apkg",
+        "chinese-ru-lesson-06.apkg",
         "chinese-ru.apkg",
         "chinese-ru-radicals-lesson-01.apkg",
         "chinese-ru-radicals-lesson-02.apkg",
         "chinese-ru-radicals-lesson-03.apkg",
         "chinese-ru-radicals-lesson-04.apkg",
+        "chinese-ru-radicals-lesson-05.apkg",
+        "chinese-ru-radicals-lesson-06.apkg",
     }
     assert all(path.stat().st_size > 1000 for path in outputs)
 
