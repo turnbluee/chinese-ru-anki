@@ -1,0 +1,13 @@
+<main class="card-shell answer-side">
+  <div class="answer-hanzi">{{Hanzi}}</div>
+  <div class="answer-russian">{{Russian}}</div>
+  <div class="answer-pinyin">{{Pinyin}}</div>
+  {{#Notes}}<div class="notes">{{Notes}}</div>{{/Notes}}
+  <hr>
+  <h2>Ваши ответы</h2>
+  <div id="answer-results"></div>
+</main>
+<div class="secret-fields" aria-hidden="true"><span id="field-uid">{{UID}}</span></div>
+<script src="_card.js"></script>
+<script>ChineseCards.initBack("zh-to-ru");</script>
+

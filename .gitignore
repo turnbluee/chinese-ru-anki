@@ -1,0 +1,9 @@
+.venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+assets/generated/*
+!assets/generated/.gitkeep
+dist/*.apkg
+
