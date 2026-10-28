@@ -15,6 +15,8 @@ from validators import CardRecord, ValidationError, read_cards
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_ID = 1729041801
 DECK_ID = 1729041802
+# Shown on the back of every card; tag GitHub releases as v<DECK_VERSION>.
+DECK_VERSION = "1.0.0"
 
 
 def read_template(name: str) -> str:
@@ -33,7 +35,7 @@ def create_model(media: list[Path] | None = None) -> genanki.Model:
         text = read_template(name)
         for plain, hashed in names.items():
             text = text.replace(f'src="{plain}"', f'src="{hashed}"')
-        return text
+        return text.replace("__DECK_VERSION__", DECK_VERSION)
 
     return genanki.Model(
         MODEL_ID,

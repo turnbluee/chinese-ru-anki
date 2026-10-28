@@ -29,6 +29,16 @@ def test_model_has_exactly_two_card_types():
     assert [item["name"] for item in model.templates] == ["Russian → Chinese", "Chinese → Russian"]
 
 
+def test_deck_version_is_shown_on_every_back_template():
+    from build_deck import DECK_VERSION
+
+    model = create_model()
+    assert re.fullmatch(r"\d+\.\d+\.\d+", DECK_VERSION)
+    for item in model.templates:
+        assert f"колода v{DECK_VERSION}" in item["afmt"]
+        assert "__DECK_VERSION__" not in item["qfmt"] + item["afmt"]
+
+
 def test_stable_deck_id():
     from build_deck import DECK_ID
 

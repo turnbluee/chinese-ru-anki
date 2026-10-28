@@ -81,6 +81,7 @@ button[hidden], [hidden] { display: none !important; }
 .status-ok { color: var(--good); }
 .status-error { color: var(--bad); }
 .secret-fields { display: none !important; }
+.deck-version { margin-top: 28px; color: var(--muted); font-size: 11px; font-weight: 300; letter-spacing: 0.02em; text-align: center; opacity: 0.45; }
 .answer-pinyin { margin-top: 8px; color: var(--accent); font-size: 28px; }
 .answer-russian { margin-top: 10px; font-size: 30px; }
 .notes { margin: 20px auto; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel); text-align: left; }
