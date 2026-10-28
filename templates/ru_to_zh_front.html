@@ -2,13 +2,17 @@
   <div class="prompt russian-prompt">{{Russian}}</div>
   <section aria-labelledby="writing-label">
     <h2 id="writing-label">Напишите иероглифы</h2>
+    <div id="hint" class="answer-pinyin" hidden></div>
     <div id="writers" class="writers"></div>
     <div id="writing-status" class="status" aria-live="polite"></div>
-    <button id="retry-writing" class="secondary tappable" type="button" hidden>Написать ещё раз</button>
+    <div class="actions">
+      <button id="retry-writing" class="secondary tappable" type="button">Стереть</button>
+      <button id="show-hint" class="secondary tappable" type="button">Подсказка</button>
+    </div>
   </section>
   <div class="form-row">
     <label for="pinyin-input">Pinyin</label>
-    <input id="pinyin-input" class="tappable" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <input id="pinyin-input" class="tappable" type="password" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
   </div>
   <div id="pinyin-status" class="status" aria-live="polite"></div>
   <div class="actions">

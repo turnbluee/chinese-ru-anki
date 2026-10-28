@@ -60,7 +60,7 @@ def test_custom_show_answer_is_absent_and_check_button_hides():
     assert "show-answer" not in fronts
     assert "answer-notice" not in fronts
     assert "requestShowAnswer" not in script
-    assert 'getElementById("check-answer").hidden = perfect && pinyin.ok' in script
+    assert 'getElementById("check-answer").hidden = writing.ok && pinyin.ok' in script
     assert 'getElementById("check-answer").hidden = russian.ok && pinyin.ok' in script
 
 
@@ -72,14 +72,30 @@ def test_hanzi_display_is_regular_weight_and_greeting_has_no_punctuation():
     assert greeting.hanzi == "你好"
 
 
-def test_rewrite_button_is_available_after_every_check():
+def test_writer_squares_have_copybook_cross():
+    css = (ROOT / "templates" / "style.css").read_text(encoding="utf-8")
+    square = css.split(".writer-square {", 1)[1].split("}", 1)[0]
+    assert square.count("repeating-linear-gradient") == 2
+    assert "background-size: 1px 100%, 100% 1px;" in square
+
+
+def test_erase_button_is_always_available():
     script = (ROOT / "web" / "card.js").read_text(encoding="utf-8")
     front = (ROOT / "templates" / "ru_to_zh_front.html").read_text(encoding="utf-8")
-    assert ">Написать ещё раз</button>" in front
-    assert 'getElementById("retry-writing").hidden = false' in script
-    assert 'getElementById("retry-writing").hidden = perfect' not in script
+    assert 'type="button">Стереть</button>' in front
+    assert 'getElementById("retry-writing").hidden' not in script
     assert 'getElementById("pinyin-status").textContent = ""' not in script
     assert 'getElementById("pinyin-input").value =' not in script
+
+
+def test_hint_traces_the_answer_and_is_reported_after_check():
+    script = (ROOT / "web" / "card.js").read_text(encoding="utf-8")
+    front = (ROOT / "templates" / "ru_to_zh_front.html").read_text(encoding="utf-8")
+    assert 'id="show-hint" class="secondary tappable" type="button">Подсказка</button>' in front
+    assert "writer.animateCharacter({ onComplete: startQuiz })" in script
+    assert script.count("showOutline: hintShown") == 2
+    assert 'writing.message + ", с подсказкой"' in script
+    assert "hintUsed: hintUsed" in script
 
 
 def test_interactive_controls_are_ankidroid_touch_safe():
@@ -105,6 +121,12 @@ def test_answer_inputs_request_no_keyboard_suggestions():
     assert fronts.count('autocorrect="off"') == 3
     assert fronts.count('autocapitalize="none"') == 3
     assert fronts.count('spellcheck="false"') == 3
+    # Keyboards ignore the attributes above; a former password field reaches Android as a
+    # visible password, which hides the suggestion strip.
+    assert fronts.count('id="pinyin-input" class="tappable" type="password"') == 2
+    script = (ROOT / "web" / "card.js").read_text(encoding="utf-8")
+    assert script.count("showPinyinInput();") == 2
+    assert 'input.type = "text"' in script
 
 
 def test_russian_prompts_do_not_reveal_cjk_characters_to_write():

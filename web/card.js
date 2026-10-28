@@ -67,6 +67,13 @@
     node.className = "status " + (result.ok ? "status-ok" : "status-error");
   }
 
+  // The pinyin field starts as type="password" and becomes text here: Chromium then reports it
+  // to Android as a visible password, which keyboards honour by hiding the suggestion strip.
+  function showPinyinInput() {
+    var input = document.getElementById("pinyin-input");
+    if (input) input.type = "text";
+  }
+
   function bindPress(element, handler) {
     var touchHandled = false;
     element.classList.add("tappable");
@@ -92,9 +99,13 @@
     var completed = [];
     var totalMistakes = 0;
     var run = 0;
+    var hintShown = false;
+    var hintUsed = false;
+    showPinyinInput();
 
     saveState(key, { direction: "ru-to-zh", checked: false });
-    function resetWriters() {
+    // With the hint on, each square plays the stroke order and keeps the outline for tracing.
+    function resetWriters(animate) {
       run += 1;
       var thisRun = run;
       writers.forEach(function (writer) {
@@ -107,7 +118,6 @@
       host.replaceChildren();
       document.getElementById("writing-status").textContent = "";
       document.getElementById("writing-status").className = "status";
-      document.getElementById("retry-writing").hidden = true;
       document.getElementById("check-answer").hidden = false;
 
       var chars = Array.from(expectedHanzi).filter(function (char) { return CJK_PATTERN.test(char); });
@@ -129,15 +139,19 @@
           height: square.clientWidth || 200,
           padding: 8,
           showCharacter: false,
-          showOutline: false,
+          showOutline: hintShown,
+          delayBetweenStrokes: 300,
           charDataLoader: function (requestedChar) {
             return window.HANZI_DATA[requestedChar];
           }
         });
         writers.push(writer);
-        writer.quiz({
+        function startQuiz() {
+          if (run === thisRun) writer.quiz(quizOptions);
+        }
+        var quizOptions = {
           showCharacter: false,
-          showOutline: false,
+          showOutline: hintShown,
           showHintAfterMisses: false,
           acceptBackwardsStrokes: false,
           highlightOnComplete: false,
@@ -148,11 +162,22 @@
           onComplete: function () {
             if (run === thisRun) completed[index] = true;
           }
-        });
+        };
+        if (animate) writer.animateCharacter({ onComplete: startQuiz });
+        else startQuiz();
       });
     }
 
-    bindPress(document.getElementById("retry-writing"), resetWriters);
+    bindPress(document.getElementById("retry-writing"), function () { resetWriters(false); });
+    bindPress(document.getElementById("show-hint"), function () {
+      hintShown = !hintShown;
+      hintUsed = true;
+      var hint = document.getElementById("hint");
+      hint.textContent = expectedPinyin;
+      hint.hidden = !hintShown;
+      document.getElementById("show-hint").textContent = hintShown ? "Скрыть подсказку" : "Подсказка";
+      resetWriters(hintShown);
+    });
     bindPress(document.getElementById("check-answer"), function () {
       var complete = completed.length > 0 && completed.every(Boolean);
       var perfect = complete && totalMistakes === 0;
@@ -162,21 +187,25 @@
       };
       var pinyinValue = document.getElementById("pinyin-input").value;
       var pinyin = checkPinyin(pinyinValue, expectedPinyin);
+      if (hintUsed) {
+        writing = { ok: false, message: writing.message + ", с подсказкой" };
+        pinyin = { ok: false, message: pinyin.message + ", с подсказкой" };
+      }
       setStatus("writing-status", "Написание", writing);
       setStatus("pinyin-status", "Pinyin", pinyin);
-      document.getElementById("retry-writing").hidden = false;
-      document.getElementById("check-answer").hidden = perfect && pinyin.ok;
+      document.getElementById("check-answer").hidden = writing.ok && pinyin.ok;
       saveState(key, {
         direction: "ru-to-zh",
         checked: true,
         pinyinInput: pinyinValue,
         pinyinOk: pinyin.ok,
         writingComplete: complete,
-        writingPerfect: perfect,
-        totalMistakes: totalMistakes
+        writingPerfect: writing.ok,
+        totalMistakes: totalMistakes,
+        hintUsed: hintUsed
       });
     });
-    resetWriters();
+    resetWriters(false);
   }
 
   function initZhToRu() {
@@ -185,6 +214,7 @@
     var expectedPinyin = text("field-pinyin");
     var acceptedRussian = text("field-russian-accepted");
     saveState(key, { direction: "zh-to-ru", checked: false });
+    showPinyinInput();
     bindPress(document.getElementById("check-answer"), function () {
       var russianValue = document.getElementById("russian-input").value;
       var pinyinValue = document.getElementById("pinyin-input").value;
@@ -224,8 +254,9 @@
       host.appendChild(wrapper);
     }
     if (direction === "ru-to-zh") {
-      row("Написание", state.writingComplete ? "завершено, ошибок: " + state.totalMistakes : "не завершено, ошибок: " + state.totalMistakes, state.writingPerfect);
-      row("Введённый pinyin", state.pinyinInput, state.pinyinOk);
+      var hintNote = state.hintUsed ? ", с подсказкой" : "";
+      row("Написание", (state.writingComplete ? "завершено, ошибок: " : "не завершено, ошибок: ") + state.totalMistakes + hintNote, state.writingPerfect);
+      row("Введённый pinyin", (state.pinyinInput || "(пусто)") + hintNote, state.pinyinOk);
     } else {
       row("Введённый перевод", state.russianInput, state.russianOk);
       row("Введённый pinyin", state.pinyinInput, state.pinyinOk);
