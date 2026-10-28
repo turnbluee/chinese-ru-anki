@@ -102,7 +102,7 @@ def build_package(
 
 def build_deck(input_path: Path, output_path: Path) -> Path:
     records = read_cards(input_path)
-    return build_package([(records, DECK_ID, "Китайский для русскоязычных")], output_path)
+    return build_package([(records, DECK_ID, "Китайский МФТИ A1")], output_path)
 
 
 def main(argv: list[str] | None = None) -> int:
